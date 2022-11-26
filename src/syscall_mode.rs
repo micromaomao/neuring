@@ -7,22 +7,20 @@ use crate::{errors::AppError, Cli};
 pub(crate) fn syscall_mode(cli: &Cli) -> Result<(), AppError> {
   let packet_size = cli.packet_size as usize;
   let mut buf = vec![0u8; packet_size];
-  let mut pkgen = PacketGenerator::init_from_cli(cli);
   match &cli.command {
     crate::Commands::Send { address } => {
       let sock_fd = setup_soekct(address, true)?;
+      let mut pkgen = PacketGenerator::init_from_cli(true, cli)?;
+      eprintln!("Ready to send to {address}.");
       loop {
         pkgen.get_next_packet(&mut buf);
         unsafe { send(sock_fd, buf.as_slice()) }?;
-        let nb_packets_sent = pkgen.get_next_index();
-        if nb_packets_sent % 1000 == 0 {
-          eprint!("\r\x1b[3KSent {nb_packets_sent} packets\r")
-        }
       }
     }
     crate::Commands::Recv { address } => {
       let sock_fd = setup_soekct(address, false)?;
-      let mut nb_received = 0usize;
+      let mut pkgen = PacketGenerator::init_from_cli(false, cli)?;
+      eprintln!("Ready to receive on {address}.");
       loop {
         let len = unsafe { recv(sock_fd, &mut buf) }?;
         if len != packet_size {
@@ -30,10 +28,6 @@ pub(crate) fn syscall_mode(cli: &Cli) -> Result<(), AppError> {
         }
         if !pkgen.verify_recv_packet(&buf) {
           continue;
-        }
-        nb_received += 1;
-        if nb_received % 1000 == 0 {
-          eprint!("\r\x1b[3KReceived {nb_received} packets\r")
         }
       }
     }

@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use errors::AppError;
-use std::process;
+use std::{path::PathBuf, process};
 use syscall_mode::syscall_mode;
 
 mod common;
@@ -23,6 +23,13 @@ pub(crate) struct Cli {
 
   #[arg(global(true), long, default_value_t = 1000, value_parser = clap::value_parser!(u32).range((packetgen::PACKET_HEAD_SIZE as i64)..))]
   packet_size: u32,
+
+  #[arg(global(true), short = 's', long, required = false)]
+  /// Output packet stats to CSV.
+  stats_file: Option<PathBuf>,
+
+  #[arg(global(true), short = 'l', long, required = false, default_value_t = packetgen::SEED)]
+  seed: u64,
 }
 
 #[derive(Subcommand)]

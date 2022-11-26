@@ -12,4 +12,6 @@ pub enum AppError {
   UnableToResolveNetAddr(String, String),
   #[error("Packet size too large.")]
   PacketSizeTooLarge,
+  #[error("Unable to open stats file for writing: {0}")]
+  StatsFileError(#[source] io::Error),
 }
