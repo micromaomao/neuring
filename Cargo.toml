@@ -1,0 +1,11 @@
+[package]
+name = "inero"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.0.27", features = ["derive"] }
+io-uring = "0.5.9"
+libc = "0.2.137"
+rand = { version = "0.8.5", features = ["small_rng"] }
+thiserror = "1.0.37"
