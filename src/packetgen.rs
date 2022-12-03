@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use std::time::Instant;
 
 use rand::rngs::SmallRng;
@@ -30,8 +29,8 @@ pub(crate) struct PacketHeader {
 pub const SEED: u64 = 0x39016c0e906374f9;
 pub const PACKET_HEAD_SIZE: usize = mem::size_of::<PacketHeader>();
 pub const PACKET_CYCLE: u64 = 1024000;
-pub const TIME_STEP_MILLIS: u64 = 10;
-pub const RECV_MAX_BACKLOG: usize = 100;
+pub const TIME_STEP_MILLIS: u64 = 100;
+pub const RECV_MAX_BACKLOG: usize = 20;
 
 pub(crate) fn millis_since_start(zero_instant: Instant) -> u64 {
   Instant::now().duration_since(zero_instant).as_millis() as u64
@@ -81,16 +80,15 @@ impl PacketGenerator {
     ))
   }
 
-  pub fn get_next_packet(&mut self, dest: &mut [u8]) {
-    debug_assert_eq!(dest.len(), self.packet_size);
+  pub fn make_next_packet(&mut self) -> &[u8] {
     let curr_millis = millis_since_start(self.zero_instant);
     let ph = PacketHeader {
       index: self.i,
       millis: curr_millis,
     };
     let ptr = (self.i % PACKET_CYCLE) as usize * self.packet_size;
-    dest.copy_from_slice(&self.data_buf[ptr..ptr + self.packet_size]);
-    dest[0..PACKET_HEAD_SIZE].copy_from_slice(unsafe {
+    let pkt = &mut self.data_buf[ptr..ptr + self.packet_size];
+    pkt[0..PACKET_HEAD_SIZE].copy_from_slice(unsafe {
       std::slice::from_raw_parts(&ph as *const PacketHeader as *const u8, PACKET_HEAD_SIZE)
     });
     self.i += 1;
@@ -105,6 +103,12 @@ impl PacketGenerator {
           .expect("wrtie to stats file failed.");
       }
     }
+
+    pkt
+  }
+
+  pub fn copy_next_packet(&mut self, dest: &mut [u8]) {
+    dest.copy_from_slice(self.make_next_packet());
   }
 
   pub fn verify_recv_packet(&mut self, pkt: &[u8]) -> bool {

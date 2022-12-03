@@ -1,3 +1,5 @@
+#![feature(new_uninit)]
+#![feature(maybe_uninit_slice)]
 use clap::{Parser, Subcommand, ValueEnum};
 use errors::AppError;
 use std::{path::PathBuf, process};
@@ -32,6 +34,14 @@ pub(crate) struct Cli {
   seed: u64,
 }
 
+fn positive_usize_parser(s: &str) -> Result<usize, &'static str> {
+  let val: usize = s.parse().map_err(|_| "Invalid usize")?;
+  if val <= 0 {
+    return Err("Invalid value");
+  }
+  Ok(val)
+}
+
 #[derive(Subcommand)]
 enum Commands {
   /// Send packets
@@ -39,6 +49,12 @@ enum Commands {
     #[arg(required = true)]
     /// Address in the form host:port
     address: String,
+
+    #[arg(long, value_parser = positive_usize_parser, default_value_t = 1)]
+    /// In syscall mode, amount of packets to send to the kernel at one time. In
+    /// io_uring mode, amount of send requests to make before waiting for
+    /// completion.
+    batch_size: usize,
   },
   /// Receive and count packets
   Recv {
