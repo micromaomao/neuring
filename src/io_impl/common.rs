@@ -1,15 +1,14 @@
-use std::{
-  fs::File,
-  io::{self, BufWriter},
-  net::ToSocketAddrs,
-  time::{Duration, Instant},
-};
+//! Some utility functions shared between implementations, like setting up
+//! socket.
 
-use crate::{errors::AppError, Cli};
-use std::io::Write;
+use std::{io, net::ToSocketAddrs, time::Duration};
+
+use crate::errors::AppError;
 use std::mem;
 
-pub(crate) fn setup_soekct(addr: &str, is_send: bool) -> Result<libc::c_int, AppError> {
+/// Create an UDP socket to the given address, either using connect or bind,
+/// depending on `is_send`.
+pub fn setup_socket(addr: &str, is_send: bool) -> Result<libc::c_int, AppError> {
   let mut parsed_addrs = addr
     .to_socket_addrs()
     .map_err(|e| AppError::UnableToResolveNetAddr(addr.to_owned(), format!("{}", e)))?;
@@ -83,38 +82,4 @@ pub(crate) fn getrandom(size: usize) -> Vec<u8> {
     }
   }
   buf
-}
-
-pub(crate) struct StatsFile {
-  f: Option<BufWriter<File>>,
-  last_flush: Instant,
-}
-
-impl StatsFile {
-  pub fn from_cli(cli: &Cli) -> Result<Self, AppError> {
-    let mut f = match cli.stats_file.as_ref().map(File::create) {
-      Some(Ok(f)) => Some(BufWriter::new(f)),
-      Some(Err(e)) => return Err(AppError::StatsFileError(e)),
-      None => None,
-    };
-    if let Some(ref mut f) = f {
-      write!(f, "start_ms,end_ms,count\n").map_err(|e| AppError::StatsFileError(e))?;
-    }
-    Ok(Self {
-      f,
-      last_flush: Instant::now(),
-    })
-  }
-
-  pub fn write(&mut self, start_ms: u64, end_ms: u64, count: u64) -> Result<(), AppError> {
-    if let Some(ref mut f) = self.f {
-      write!(f, "{},{},{}\n", start_ms, end_ms, count).map_err(|e| AppError::StatsFileError(e))?;
-      let now = Instant::now();
-      if now - self.last_flush > Duration::from_secs(1) {
-        f.flush().map_err(|e| AppError::StatsFileError(e))?;
-        self.last_flush = now;
-      }
-    }
-    Ok(())
-  }
 }
