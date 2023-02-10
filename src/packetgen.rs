@@ -1,10 +1,11 @@
+// TODO: remove
+
 use std::time::Instant;
 
 use rand::rngs::SmallRng;
 use rand::{RngCore, SeedableRng};
 use std::mem;
 
-use crate::common::StatsFile;
 use crate::errors::AppError;
 use crate::Cli;
 
