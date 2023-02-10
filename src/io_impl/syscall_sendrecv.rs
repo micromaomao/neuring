@@ -17,6 +17,7 @@ use std::time::Instant;
 
 use crate::errors::AppError;
 use crate::io_impl::common::{get_sockaddr, get_socket_local_port, setup_send_socket};
+use crate::io_impl::sys::{recv, send, sendmmsg};
 use crate::pkt::{parse_packet, write_packet};
 use crate::stats::{self, StatsAggregator};
 
@@ -147,74 +148,4 @@ pub fn syscall_sendrecv(
     }
     Ok(())
   })
-}
-
-const SEND_FLAGS: libc::c_int = libc::MSG_CONFIRM | libc::MSG_NOSIGNAL;
-
-unsafe fn send(sock_fd: libc::c_int, packet_data: &[u8]) -> Result<(), AppError> {
-  unsafe {
-    let ret = libc::send(
-      sock_fd,
-      packet_data.as_ptr() as *const _,
-      packet_data.len(),
-      SEND_FLAGS,
-    );
-    if ret == -1 {
-      let errno = *libc::__errno_location();
-      if errno == libc::EMSGSIZE {
-        return Err(AppError::PacketSizeTooLarge);
-      }
-      return Err(AppError::IOError("send", io::Error::last_os_error()));
-    }
-    #[cfg(debug_assertions)]
-    if ret != packet_data.len() as _ {
-      unreachable!("Did not send the full packet...?");
-      // There is no "partial write" for UDP - if the message is larger than
-      // the max length allowable it will return EMSGSIZE.
-    }
-    Ok(())
-  }
-}
-
-unsafe fn sendmmsg(sock_fd: libc::c_int, pkts: &mut [libc::mmsghdr]) -> Result<(), AppError> {
-  let mut rest = &mut pkts[..];
-  while !rest.is_empty() {
-    unsafe {
-      let ret = libc::sendmmsg(
-        sock_fd,
-        rest.as_mut_ptr(),
-        rest.len().try_into().unwrap(),
-        SEND_FLAGS,
-      );
-      if ret == -1 {
-        let errno = *libc::__errno_location();
-        if errno == libc::EMSGSIZE {
-          return Err(AppError::PacketSizeTooLarge);
-        }
-        return Err(AppError::IOError("sendmmsg", io::Error::last_os_error()));
-      }
-      rest = &mut rest[usize::try_from(ret).unwrap()..];
-    }
-  }
-  Ok(())
-}
-
-unsafe fn recv(sock_fd: libc::c_int, recv_buf: &mut [u8]) -> Result<usize, AppError> {
-  unsafe {
-    let ret = libc::recv(
-      sock_fd,
-      recv_buf.as_mut_ptr() as *mut _,
-      recv_buf.len(),
-      libc::MSG_TRUNC,
-    );
-    if ret == -1 {
-      let errno = *libc::__errno_location();
-      if errno == libc::EAGAIN || errno == libc::EWOULDBLOCK {
-        return Ok(0);
-      }
-      return Err(AppError::IOError("recv", io::Error::last_os_error()));
-    }
-    debug_assert!(ret >= 0);
-    Ok(ret as usize)
-  }
 }

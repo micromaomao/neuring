@@ -72,16 +72,24 @@ pub fn setup_send_socket(dest_addr: &GetSockaddrRes) -> Result<libc::c_int, AppE
 }
 
 /// Bind a UDP socket to the given address, and return the socket fd.
-pub fn setup_recv_socket(
-  listen_addr: &GetSockaddrRes,
-  is_send: bool,
-) -> Result<libc::c_int, AppError> {
+pub fn setup_recv_socket(listen_addr: &GetSockaddrRes) -> Result<libc::c_int, AppError> {
   let (af, ref sock_addr, addr_len) = *listen_addr;
   let sock_fd = unsafe { libc::socket(af, libc::SOCK_DGRAM, 0) };
   if sock_fd == -1 {
     return Err(AppError::IOError("socket", io::Error::last_os_error()));
   }
+  let val: libc::c_int = 1;
   unsafe {
+    if libc::setsockopt(
+      sock_fd,
+      libc::SOL_SOCKET,
+      libc::SO_REUSEPORT,
+      &val as *const _ as *const libc::c_void,
+      mem::size_of_val(&val) as libc::socklen_t,
+    ) == -1
+    {
+      return Err(AppError::IOError("setsockopt", io::Error::last_os_error()));
+    }
     if libc::bind(sock_fd, sock_addr, addr_len) == -1 {
       return Err(AppError::IOError("bind", io::Error::last_os_error()));
     }

@@ -80,8 +80,9 @@ fn make_stats_aggregator_from_arg(cli: &Cli) -> Result<stats::StatsAggregator, A
 
 #[derive(Subcommand)]
 enum Commands {
-  /// Send packets
-  Syscall {
+  /// Send packets with normal syscalls
+  #[clap(name = "syscall-send")]
+  SyscallSendrecv {
     #[arg(required = true)]
     /// Address to send to, in the form host:port
     server_addr: String,
@@ -97,12 +98,30 @@ enum Commands {
     /// - one for sending and one for receiving.
     nb_sockets: usize,
   },
+
+  /// An echo server with normal syscalls
+  #[clap(name = "syscall-echo")]
+  SyscallEcho {
+    #[arg(required = true)]
+    /// Address to listen on, in the form host:port
+    server_addr: String,
+
+    #[arg(long, value_parser = positive_usize_parser, default_value_t = 1)]
+    /// Number of sockets to use.  Each socket will be handled by 2 new threads
+    /// - one for sending and one for receiving.
+    nb_sockets: usize,
+
+    #[arg(long, value_parser = positive_usize_parser, default_value_t = 2000)]
+    /// The maximum size of a packet we will process
+    mtu: usize,
+  },
 }
 
 fn run() -> Result<(), AppError> {
   let cli = Cli::parse();
+  let stats = make_stats_aggregator_from_arg(&cli)?;
   match cli.command {
-    Commands::Syscall {
+    Commands::SyscallSendrecv {
       ref server_addr,
       batch_size,
       nb_sockets,
@@ -112,9 +131,14 @@ fn run() -> Result<(), AppError> {
       batch_size,
       cli.seed,
       nb_sockets,
-      &make_stats_aggregator_from_arg(&cli)?,
+      &stats,
       Instant::now(),
     ),
+    Commands::SyscallEcho {
+      ref server_addr,
+      nb_sockets,
+      mtu,
+    } => io_impl::syscall_echo::syscall_echo(server_addr, mtu, nb_sockets, Instant::now(), &stats),
   }
 }
 
