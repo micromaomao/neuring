@@ -25,14 +25,14 @@ pub fn syscall_sendrecv(
   packet_size: usize,
   batch_size: usize,
   seed: u64,
-  nb_threads: usize,
+  nb_sockets: usize,
   stats_agg: &StatsAggregator,
   start_time: Instant,
 ) -> Result<(), AppError> {
   let index = AtomicU64::new(0);
   let resolved_addr = get_sockaddr(dest_addr)?;
   thread::scope(|scope| -> Result<(), AppError> {
-    for tid in 0..nb_threads {
+    for tid in 0..nb_sockets {
       let sock_fd = setup_send_socket(&resolved_addr)?;
       let local_port = unsafe { get_socket_local_port(sock_fd) }?;
 

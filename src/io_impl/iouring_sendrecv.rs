@@ -1,7 +1,9 @@
 //! Implementation of a packet sender using io_uring.
 
+use std::time::Instant;
+
 use crate::errors::AppError;
-use crate::io_impl::common::{get_sockaddr, setup_socket};
+use crate::io_impl::common::{get_sockaddr};
 use crate::pkt::write_packet;
 use crate::stats::StatsAggregator;
 
@@ -10,10 +12,10 @@ pub fn iouring_send(
   packet_size: usize,
   ring_entries: usize,
   seed: u64,
-  stats_agg: StatsAggregator,
+  nb_sockets: usize,
+  stats_agg: &StatsAggregator,
+  start_time: Instant,
 ) -> Result<(), AppError> {
-  let resolved_dest_addr = get_sockaddr(dest_addr)?;
-  let sock_fd = setup_socket(&resolved_dest_addr, true)?;
-  eprintln!("Ready to send to {dest_addr}.");
+  let resolved_addr = get_sockaddr(dest_addr)?;
   unimplemented!()
 }
