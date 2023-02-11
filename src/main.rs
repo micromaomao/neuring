@@ -40,15 +40,15 @@ pub(crate) struct Cli {
   /// Output packet stats to CSV.
   stats_file: Option<PathBuf>,
 
-  #[arg(global(true), short = 't', long, default_value_t = 100, value_parser = clap::value_parser!(u64).range(1..))]
+  #[arg(global(true), short = 'i', long, default_value_t = 100, value_parser = clap::value_parser!(u64).range(1..))]
   /// Interval in milliseconds between stat steps.
   stats_interval_ms: u64,
 
-  #[arg(global(true), short = 'b', long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..))]
+  #[arg(global(true), short = 't', long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..))]
   /// Number of seconds between stats dump.
   stats_evict_interval_secs: u64,
 
-  #[arg(global(true), long, default_value_t = 10, value_parser = clap::value_parser!(u64).range(1..))]
+  #[arg(global(true), short = 'T', long, default_value_t = 10, value_parser = clap::value_parser!(u64).range(1..))]
   /// On each stats dump, stats older than this many seconds will be dumped.
   stats_evict_threshold_secs: u64,
 }
@@ -93,7 +93,7 @@ enum Commands {
     /// be used, otherwise `sendmmsg` will be used.
     batch_size: usize,
 
-    #[arg(long, value_parser = positive_usize_parser, default_value_t = 1)]
+    #[arg(long, short = 'j', value_parser = positive_usize_parser, default_value_t = 1)]
     /// Number of sockets to use.  Each socket will be handled by 2 new threads
     /// - one for sending and one for receiving.
     nb_sockets: usize,
@@ -106,7 +106,7 @@ enum Commands {
     /// Address to listen on, in the form host:port
     server_addr: String,
 
-    #[arg(long, value_parser = positive_usize_parser, default_value_t = 1)]
+    #[arg(long, short = 'j', value_parser = positive_usize_parser, default_value_t = 1)]
     /// Number of sockets to use.  Each socket will be handled by 2 new threads
     /// - one for sending and one for receiving.
     nb_sockets: usize,
@@ -114,6 +114,34 @@ enum Commands {
     #[arg(long, value_parser = positive_usize_parser, default_value_t = 2000)]
     /// The maximum size of a packet we will process
     mtu: usize,
+  },
+
+  /// io_uring-based echo server
+  #[clap(name = "io-uring-echo")]
+  IoUringEcho {
+    #[arg(required = true)]
+    /// Address to listen on, in the form host:port
+    server_addr: String,
+
+    #[arg(long, short = 'j', value_parser = positive_usize_parser, default_value_t = 1)]
+    /// Number of sockets to use.  Each socket will be handled by a separate
+    /// ring, but there will only be one user thread in any case.
+    nb_sockets: usize,
+
+    #[arg(long, value_parser = positive_usize_parser, default_value_t = 2000)]
+    /// The maximum size of a packet we will process
+    mtu: usize,
+
+    #[arg(long, short = 'r', value_parser = clap::value_parser!(u32).range(2..), default_value_t = 32768)]
+    /// The size of the io_uring ring, must be a power of 2.  Depending on your
+    /// system there might be further limits.
+    ring_size: u32,
+
+    #[arg(long, value_parser = clap::value_parser!(u32).range(0..), default_value_t = 1000)]
+    /// The number of milliseconds to wait for a packet to arrive before the
+    /// kernel stops polling.  Kernel polling will not be used if this is zero,
+    /// effectively making this a single-threaded async IO benchmark.
+    kernel_poll_timeout: u32,
   },
 }
 
@@ -139,6 +167,21 @@ fn run() -> Result<(), AppError> {
       nb_sockets,
       mtu,
     } => io_impl::syscall_echo::syscall_echo(server_addr, mtu, nb_sockets, Instant::now(), &stats),
+    Commands::IoUringEcho {
+      ref server_addr,
+      nb_sockets,
+      mtu,
+      ring_size,
+      kernel_poll_timeout,
+    } => io_impl::iouring_echo::iouring_echo(
+      server_addr,
+      mtu,
+      nb_sockets,
+      Instant::now(),
+      &stats,
+      ring_size,
+      kernel_poll_timeout,
+    ),
   }
 }
 

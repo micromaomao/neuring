@@ -9,7 +9,6 @@
 //!
 //! See https://lwn.net/Articles/542629/
 
-use std::io;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;

@@ -16,5 +16,7 @@ pub enum AppError {
   #[error("Unable to open stats file for writing: {0}")]
   StatsFileError(#[source] io::Error),
   #[error("io_uring: {0}")]
-  IoUringError(#[from] io::Error),
+  IoUringError(#[source] io::Error),
+  #[error("io_uring: queue full while pushing {0}({1}) (capacity {2})")]
+  IoUringFull(&'static str, usize, usize),
 }
