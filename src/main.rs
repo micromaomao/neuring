@@ -142,6 +142,10 @@ enum Commands {
     /// kernel stops polling.  Kernel polling will not be used if this is zero,
     /// effectively making this a single-threaded async IO benchmark.
     kernel_poll_timeout: u32,
+
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..), default_value_t = 32)]
+    /// Number of recv requests to send to the kernel.
+    nb_recv: u32,
   },
 }
 
@@ -173,6 +177,7 @@ fn run() -> Result<(), AppError> {
       mtu,
       ring_size,
       kernel_poll_timeout,
+      nb_recv,
     } => io_impl::iouring_echo::iouring_echo(
       server_addr,
       mtu,
@@ -180,6 +185,7 @@ fn run() -> Result<(), AppError> {
       Instant::now(),
       &stats,
       ring_size,
+      nb_recv,
       kernel_poll_timeout,
     ),
   }

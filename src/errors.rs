@@ -17,6 +17,6 @@ pub enum AppError {
   StatsFileError(#[source] io::Error),
   #[error("io_uring: {0}")]
   IoUringError(#[source] io::Error),
-  #[error("io_uring: queue full while pushing {0}({1}) (capacity {2})")]
-  IoUringFull(&'static str, usize, usize),
+  #[error("io_uring: queue full while pushing {0}({1})")]
+  IoUringFull(&'static str, usize),
 }
