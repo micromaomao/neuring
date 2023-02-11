@@ -34,6 +34,10 @@ pub fn syscall_echo(
             continue;
           }
           let recv_res = recv_res.unwrap();
+          if recv_res.recv_size == 0 {
+            // For some reason the kernel sends us spurious 0-length packets occasionally.
+            continue;
+          }
           let recv_time = stats::get_time_value_now(start_time);
           let send_res = unsafe {
             sendto(
