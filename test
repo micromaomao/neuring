@@ -1,2 +1,0 @@
-cargo run --release -- syscall-send 127.0.0.1:10000 -s /dev/stdout -i 1000 -t 1 -T 1
-cargo run io-uring-echo 127.0.0.1:10000 -s /dev/stdout -i 1000 -t 1 -T 1
