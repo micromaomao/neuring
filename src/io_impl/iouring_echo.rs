@@ -83,8 +83,16 @@ pub fn iouring_echo(
   loop {
     for i in 0..nb_sockets {
       let sock = &mut socks[i];
+      let initial_cql = sock.ring.completion().len();
       if let Err(e) = sock.check_cq(stats, start_time) {
         eprintln!("Error encountered in socket {i}: {e}");
+      }
+      let now_cql = sock.ring.completion().len();
+      if now_cql > initial_cql && initial_cql != 0 {
+        eprintln!(
+          "Socket {i} failed to catch up with CQ entries - {} -> {}.",
+          initial_cql, now_cql
+        );
       }
       if sqpoll_idle == 0 {
         sock

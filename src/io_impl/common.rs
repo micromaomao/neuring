@@ -109,19 +109,3 @@ pub unsafe fn get_socket_local_port(fd: libc::c_int) -> Result<libc::in_port_t, 
   }
   Ok(addr.sin_port)
 }
-
-pub(crate) fn getrandom(size: usize) -> Vec<u8> {
-  let mut buf = vec![0u8; size];
-  let mut written = 0usize;
-  while written < size {
-    unsafe {
-      let ret = libc::getrandom(buf.as_mut_ptr().add(written) as *mut _, size - written, 0);
-      if ret == -1 {
-        panic!("getrandom failed: {}", io::Error::last_os_error());
-      }
-      assert!(ret > 0);
-      written += ret as usize;
-    }
-  }
-  buf
-}
